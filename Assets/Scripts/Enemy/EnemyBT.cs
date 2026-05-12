@@ -19,14 +19,12 @@ public class EnemyBT : MonoBehaviour
 
     private NavMeshAgent _agent;
     private EnemyPerception _perception;
-    private Animator _animator;
     private Node _rootNode;
 
     void Start()
     {
         _agent = GetComponent<NavMeshAgent>();
         _perception = GetComponent<EnemyPerception>();
-        _animator = GetComponent<Animator>();
         _rootNode = BuildTree();
     }
 
@@ -73,16 +71,11 @@ public class EnemyBT : MonoBehaviour
     {
         _agent.isStopped = true;
         transform.LookAt(_perception.PlayerTransform);
-        _animator.SetBool("isAttacking", true);
-        _animator.SetBool("isChasing", false);
-        _animator.SetBool("isPatrolling", false);
         return NodeState.Success;
     }
 
     NodeState ChaseOrSearch()
     {
-        _animator.SetBool("isAttacking", false);
-
         if (_perception.CanSeePlayer)
         {
             // Acaba l'estat search si el torna a veure
@@ -90,8 +83,6 @@ public class EnemyBT : MonoBehaviour
             _lastSeenPosition = _perception.PlayerTransform.position;
             _agent.isStopped = false;
             _agent.SetDestination(_lastSeenPosition);
-            _animator.SetBool("isChasing", true);
-            _animator.SetBool("isPatrolling", false);
         }
         else
         {
@@ -105,8 +96,6 @@ public class EnemyBT : MonoBehaviour
             }
 
             _searchTimer -= Time.deltaTime;
-            _animator.SetBool("isChasing", false);
-            _animator.SetBool("isPatrolling", true);
 
             // Ha acabat el temps, tornar a Patrol normal
             if (_searchTimer <= 0f)
@@ -126,15 +115,18 @@ public class EnemyBT : MonoBehaviour
     NodeState Patrol()
     {
         _agent.isStopped = false;
-        _animator.SetBool("isAttacking", false);
-        _animator.SetBool("isChasing", false);
-        _animator.SetBool("isPatrolling", true);
 
         if (waypoints.Length == 0) return NodeState.Failure;
 
-        if (!_agent.pathPending && _agent.remainingDistance < 0.5f)
+        // Comprovar per distància
+        float dist = Vector3.Distance(transform.position, waypoints[_waypointIndex].position);
+        if (dist < 1f)
         {
             _waypointIndex = (_waypointIndex + 1) % waypoints.Length;
+            _agent.SetDestination(waypoints[_waypointIndex].position);
+        }
+        else if (!_agent.hasPath)
+        {
             _agent.SetDestination(waypoints[_waypointIndex].position);
         }
 
